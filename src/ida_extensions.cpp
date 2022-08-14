@@ -68,6 +68,16 @@ bool is_retn_insn(const ea_t ea)
     return decode_insn(&ins, ea) && is_retn_insn(ins);
 }
 
+bool is_int3_insn(const insn_t& ins)
+{
+    return is_int3_insn(ins.ea);
+}
+
+bool is_int3_insn(const ea_t ea)
+{
+    return get_byte(ea) == 0xCC;
+}
+
 #pragma endregion
 
 #pragma region Functions
@@ -85,10 +95,10 @@ bool is_func_truncated(const func_t& func)
     insn_t end_insn;
     get_func_end_insn(func, end_insn);
     
-    // return true if it doesn't end on a ret or jmp or TODO: int 3
+    // return true if it doesn't end on a ret, jmp, or int 3
     // NOTE: do not use func_t::does_return() because it returns true if *any* part of the function returns!
     // NOTE: do not use is_ret_insn because it's buggy!
-    return !is_retn_insn(end_insn) && !is_jmp_insn(end_insn.ea);
+    return !is_retn_insn(end_insn) && !is_jmp_insn(end_insn) && !is_int3_insn(end_insn);
 }
 
 #pragma endregion
