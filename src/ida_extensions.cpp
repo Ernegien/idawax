@@ -179,6 +179,66 @@ void del_all_drefs_to(const ea_t start, const ea_t end)
 
 #pragma region Code Analysis
 
+bool is_func_align(const ea_t ea)
+{
+    // skip already-aligned instances
+    if ((ea & 0xF) == 0)
+        return false;
+
+    // skip alignment within functions
+    func_t* func = get_func(ea);
+    if (func != nullptr)
+        return false;
+
+    // skip pre-existing 16-byte alignment
+    flags_t flags = get_flags(ea);
+    if (is_align(flags) && get_alignment(ea) == 4)
+        return false;
+
+    // look for NOPs until the next 16-byte alignment
+    ea_t aligned = (ea + 0xF) & 0xFFFFFFF0;
+    ea_t pos = ea;
+    insn_t ins;
+    do
+    {
+        // skip invalid instructions
+        int size = decode_insn(&ins, pos);
+        if (size == 0)
+            return false;
+
+        // skip non-alignment
+        if (!is_align_insn(pos))
+            return false;
+
+        // skip jump tables
+        if (is_jmp_table(pos))
+            return false;
+
+        pos += size;
+    } while (pos < aligned);
+
+    // return true if the aligned instruction is not also an alignment instruction but is possibly an instruction
+    return pos == aligned && !is_align_insn(pos) && decode_insn(&ins, pos) > 0;
+}
+
+bool try_make_func_align(const ea_t ea)
+{    
+    // skip if no function alignment detected
+    if (!is_func_align(ea))
+        return false;
+
+    // calculate alignment size
+    ea_t aligned = (ea + 0xF) & 0xFFFFFFF0;
+    size_t align_size = aligned - ea;
+
+    // undefine any pre-existing drefs and items that may interfere with alignment creation
+    del_all_drefs_to(ea, aligned);
+    del_items(ea, DELIT_EXPAND, align_size);
+
+    // attempts to create the alignment
+    return create_align(ea, align_size, 4);
+}
+
 void remove_bad_code_xrefs(const ea_t ea)
 {
     flags_t flags = get_flags(ea);
@@ -272,71 +332,6 @@ void detect_and_make_op_tag(const insn_t& instruction)
 #pragma endregion
 
 #pragma region Data Analysis
-
-bool is_align16(const ea_t ea)
-{
-    flags_t flags = get_flags(ea);
-    func_t* func = get_func(ea);
-
-    // skip alignment within functions
-    if (func != nullptr)
-        return false;
-
-    // skip pre-existing 16-byte alignment
-    if (is_align(flags) && get_alignment(ea) == 4)
-        return false;
-
-    // skip already-aligned instances
-    if ((ea & 0xF) == 0)
-        return false;
-
-    // look for NOPs until the next 16-byte alignment
-    ea_t aligned = (ea + 0xF) & 0xFFFFFFF0;
-    ea_t pos = ea;
-    insn_t ins;
-    do
-    {
-        // skip invalid instructions
-        int size = decode_insn(&ins, pos);
-        if (size == 0)
-            return false;
-
-        // skip non-alignment
-        if (!is_align_insn(pos))
-            return false;
-
-        // skip jump tables
-        if (is_jmp_table(pos))
-            return false;
-
-        pos += size;
-    } while (pos < aligned);
-
-    // return true if the aligned instruction is not also an alignment instruction
-    return pos == aligned && !is_align_insn(pos);
-}
-
-void detect_and_make_align(const ea_t ea)    // TODO: rename to detect_func_align and return status on whether or not it was detected?
-{    
-    if (is_align16(ea))
-    {
-        msg("Creating alignment at address 0x%X\r\n", ea);
-
-        // next 16 - byte alignment
-        ea_t aligned = (ea + 0xF) & 0xFFFFFFF0;
-        size_t padding_size = aligned - ea;
-        if (!create_align(ea, padding_size, 4))
-        {
-            // undefine the entire range of padding
-            del_all_drefs_to(ea, aligned);
-            del_items(ea, DELIT_EXPAND, padding_size);
-            if (!create_align(ea, padding_size, 4))
-            {
-                // TODO: log hard failure
-            }
-        }
-    }
-}
 
 #pragma endregion
 

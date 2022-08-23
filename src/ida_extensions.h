@@ -147,6 +147,20 @@ void del_all_drefs_to(const ea_t start, const ea_t end);
 #pragma region Code Analysis
 
 /// <summary>
+/// Determines if the specified address is the start of a 16-byte function alignment directive.
+/// </summary>
+/// <param name="ea">The address.</param>
+/// <returns>Returns true if alignment detected.</returns>
+bool is_func_align(const ea_t ea);
+
+/// <summary>
+/// Makes a 16-byte alignment directive if detected at the specified address.
+/// </summary>
+/// <param name="ea">The address.</param>
+/// <returns>Returns true if alignment was detected and successfully created.</returns>
+bool try_make_func_align(const ea_t ea);
+
+/// <summary>
 /// Removes bad xrefs to code.
 /// </summary>
 /// <param name="ea">The instruction address.</param>
@@ -163,19 +177,6 @@ void detect_and_make_op_tag(const insn_t& instruction);
 #pragma endregion
 
 #pragma region Data Analysis
-
-/// <summary>
-/// Determines if the specified address is the start of a 16-byte alignment directive.
-/// </summary>
-/// <param name="ea"></param>
-/// <returns></returns>
-bool is_align16(const ea_t ea);
-
-/// <summary>
-/// Makes a 16-byte alignment entry if detected at the specified address.
-/// </summary>
-/// <param name="ea">The address.</param>
-void detect_and_make_align(const ea_t ea);
 
 #pragma endregion
 

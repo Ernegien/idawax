@@ -16,11 +16,14 @@
 
 void detect_function(const ea_t ea)
 { 
+    // skip already defined functions
     func_t* func = get_func(ea);
+    if (func != nullptr)
+        return;
 
     // skip alignment and data (for now)
     flags_t flags = get_flags(ea);
-    if (func != nullptr || is_align(flags) || is_data(flags))
+    if (is_align(flags) || is_data(flags))
         return;
 
     msg("Creating function at 0x%X\r\n", ea);
@@ -74,10 +77,14 @@ void process_code(const idaplace_t& place)
     if (is_jmp_table(place.ea))
         return;
 
+    // undefined code
     if (!get_func(place.ea))
     {
-        detect_and_make_align(place.ea);
-        detect_function(place.ea);
+        if (try_make_func_align(place.ea))
+        {
+            msg("Created function alignment at address 0x%X\r\n", place.ea);
+        }
+        else detect_function(place.ea);
     }
 
     func_t* func = get_func(place.ea);
