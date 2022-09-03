@@ -96,6 +96,7 @@ void process_data(const idaplace_t& place)
     asize_t item_size = get_data_elsize(place.ea, flags);
     bool is_array = total_size > item_size;
     asize_t array_count = total_size / item_size;
+    bool is_dword_aligned = place.ea % 4 == 0;
 
     // TODO: not sure if mixed arrays are a thing...
     assert(total_size % item_size == 0);
@@ -105,7 +106,7 @@ void process_data(const idaplace_t& place)
     flags_t offset_flags = get_flags(offset);
 
     // check if it points to the beginning of a function
-    if (is_func(offset_flags) && get_func(offset)->start_ea == offset)
+    if (is_dword_aligned && is_func(offset_flags) && get_func(offset)->start_ea == offset)
     {
         msg("Function reference detected at 0x%X\r\n", place.ea);
         if (!create_dword(place.ea, 4))
@@ -114,8 +115,8 @@ void process_data(const idaplace_t& place)
         }
     }
 
-    // check if it points to referenced or defined strings
-    else if (is_data(offset_flags) && (has_xref(offset_flags) || is_strlit(offset_flags) || is_off(offset_flags, 0)))
+    // check if it points to referenced data or defined offsets/strings
+    else if (is_dword_aligned && is_data(offset_flags) && (has_xref(offset_flags) || is_strlit(offset_flags) || is_off(offset_flags, 0)))
     {
         msg("Data reference detected at 0x%X\r\n", place.ea);
         if (!create_dword(place.ea, 4))
