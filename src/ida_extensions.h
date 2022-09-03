@@ -66,7 +66,7 @@ bool is_jmp_table(const ea_t ea);
 /// </summary>
 /// <param name="ins">The instruction.</param>
 /// <returns>Returns true if the instruction is a return.</returns>
-bool is_retn_insn(const insn_t& ins);
+bool is_ret_insn_ex(const insn_t& ins);
 
 /// <summary>
 /// Determines if the instruction at the specified address is a return.
@@ -74,7 +74,7 @@ bool is_retn_insn(const insn_t& ins);
 /// </summary>
 /// <param name="ea"></param>
 /// <returns></returns>
-bool is_retn_insn(const ea_t ea);
+bool is_ret_insn_ex(const ea_t ea);
 
 /// <summary>
 /// Determines if the specified instruction is an int 3.
@@ -90,6 +90,27 @@ bool is_int3_insn(const insn_t& ins);
 /// <returns>Returns true if the instruction is an int 3.</returns>
 bool is_int3_insn(const ea_t ea);
 
+/// <summary>
+/// Return true if it's an instruction functions commonly end with.
+/// </summary>
+/// <param name="ins">The instruction.</param>
+/// <returns>Return true for a ret, jmp, or int 3 instruction.</returns>
+bool is_func_end_insn(const insn_t& ins);
+
+/// <summary>
+/// Return true if the address contains an instruction functions commonly end with.
+/// </summary>
+/// <param name="ea">The instruction address.</param>
+/// <returns>Return true for a ret, jmp, or int 3 instruction.</returns>
+bool is_func_end_insn(const ea_t ea);
+
+/// <summary>
+/// Attempts to create an instruction, undefining existing items if necessary. 
+/// </summary>
+/// <param name="ea">The address.</param>
+/// <returns>Returns true if an instruction has been successfully created.</returns>
+bool create_insn_ex(const ea_t ea);
+
 #pragma endregion
 
 #pragma region Functions
@@ -102,11 +123,11 @@ bool is_int3_insn(const ea_t ea);
 void get_func_end_insn(const func_t& func, insn_t& out);
 
 /// <summary>
-/// Detects incomplete functions that don't end on a retn, jmp, or int 3.
+/// Detects functions that don't end on a retn, jmp, or int 3.
 /// </summary>
 /// <param name="func">The function.</param>
-/// <returns>Returns true if the function is incomplete.</returns>
-bool is_func_truncated(const func_t& func);
+/// <returns>Returns true if the function ends.</returns>
+bool func_does_end(const func_t& func);
 
 #pragma endregion
 

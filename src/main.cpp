@@ -27,37 +27,55 @@ void detect_function(const ea_t ea)
         return;
 
     msg("Creating function at 0x%X\r\n", ea);
-    //auto_make_proc(ea);
-    if (add_func(ea))
+    if (!add_func(ea))
     {
-        // TODO: fixups
+        // TODO: fixup surroundings and try again
     }
 }
 
-// TODO: run this per-function rather than per-place!
-// attempts to fix functions that incorrectly end on a call due to an early exit
-void extend_bad_function_end(const idaplace_t& place, const func_t* func, const insn_t& instruction)
+ea_t extend_bad_function_end(const func_t* func)
 {
-    if (place.ea != (func->end_ea - instruction.size) || !is_call_insn(instruction))
-        return;
-
-    int lookahead = 100;
-    idaplace_t p = idaplace_t(place);
-    insn_t i;
-
-    do
+    int max_tries = 5;
+    for (int i = 0; i < max_tries && !func_does_end(*func); i++)
     {
-        decode_insn(&i, p.ea);
-        p.next(NULL);
-        lookahead--;
-    } while (!is_retn_insn(i) && !is_align_insn(p.ea) && get_func(p.ea) == nullptr && lookahead > 0);
+        // consume the next function if nothing inbetween
+        func_t* next_func = get_next_func(func->start_ea);
+        if (next_func->start_ea == func->end_ea && del_func(next_func->start_ea))
+        {
+            // TODO: remove xrefs?
+            msg("Removed bad function at 0x%X\r\n", next_func->start_ea);
+            del_global_name(next_func->start_ea);
+            if (set_func_end(func->start_ea, next_func->end_ea))
+            {
+                continue;
+            }
+        }
 
-    if (lookahead > 0)
-    {
-        msg("Extending function end from 0x%X to 0x%X\r\n", func->end_ea, p.ea);
-        msg_disasm_range(place.ea, p.ea + 1);
-        set_func_end(func->start_ea, p.ea);
+        // scan until the next return/alignment/function, this isn't guaranteed to find the actual function end!
+        int lookahead = 100;
+        idaplace_t p = idaplace_t(func->end_ea, 0);
+        insn_t ins;
+
+        do
+        {
+            decode_insn(&ins, p.ea);
+            p.next(NULL);
+            lookahead--;
+        } while (!is_func_end_insn(ins) && !is_align_insn(p.ea) && get_func(p.ea) == nullptr && lookahead > 0);    // TODO: && (!is_data(flags) && has_refs(flags))
+
+        if (lookahead > 0 && set_func_end(func->start_ea, p.ea))
+        {
+            continue;
+        }
+
+        // TODO: more fix-ups
+
+        // all attempts failed, abort
+        return BADADDR;
     }
+
+    // TODO: get_func with updated info?
+    return func->end_ea;
 }
 
 // TODO: removes bad xrefs to data
@@ -73,6 +91,8 @@ void process_data(const idaplace_t& place)
 
 void process_code(const idaplace_t& place)
 {
+    flags_t flags;
+
     // skip jump tables
     if (is_jmp_table(place.ea))
         return;
@@ -90,10 +110,35 @@ void process_code(const idaplace_t& place)
     func_t* func = get_func(place.ea);
     if (func != nullptr)
     {
+        // skip data offsets inside functions that point to another location within the same function (undetected jump tables)
+        flags = get_flags(place.ea);
+        if (is_data(flags) && is_same_func(func->start_ea, get_32bit(place.ea)))
+            return;
+
+        // extend partial functions
+        if (func->start_ea == place.ea && !func_does_end(*func))
+        {
+            msg("Found partial function at 0x%X\r\n", func->start_ea);
+
+            ea_t orig_end = func->end_ea;
+            if (extend_bad_function_end(func) > orig_end)
+            {
+                msg("Extended function end from 0x%X to 0x%X\r\n", orig_end, func->end_ea);
+                msg_disasm_range(orig_end, func->end_ea + 1);
+            }
+        }
+
         insn_t instruction;
         decode_insn(&instruction, place.ea);
+
+        // TODO: handle alignment within functions
+
+        // handle undefined code within functions
+        flags = get_flags(place.ea);
+        if (!is_code(flags) && !is_align(flags))
+            create_insn_ex(place.ea);
+
         remove_bad_code_xrefs(place.ea);
-        extend_bad_function_end(place, func, instruction);
         detect_and_make_op_tag(instruction);
     }
 }
@@ -110,19 +155,6 @@ void process_segment(const segment_t& segment)
     bool has_data = segment.type == SEG_DATA || strstr(c_name, "D3D") || strstr(c_name, "DSOUND") ||
         strstr(c_name, "XNET") || strstr(c_name, "XPP") || strstr(c_name, "DOLBY") || 
         strstr(c_name, "DATA") || strstr(c_name, "$$X");
-
-    // loop through functions checking for partials
-    func_t* func = get_next_func(segment.start_ea);
-    while (func != nullptr)
-    {
-        if (is_func_truncated(*func))
-        {
-            msg("Partial function found at 0x%X\r\n", func->start_ea);
-            // TODO: apply necessary fix-ups
-        }
-
-        func = get_next_func(func->end_ea);
-    }
 
     // loop through each place address
     idaplace_t place = idaplace_t(segment.start_ea, 0);
@@ -160,7 +192,10 @@ bool idaapi run(size_t)
   {
       process_segment(segment);
   }
- 
+
+  // kill any pending auto-analysis triggered by the updates we've made
+  auto_cancel(0, UINT32_MAX);
+
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
   msg("Cleanup finished in %d milliseconds\r\n", duration);

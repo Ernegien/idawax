@@ -56,16 +56,16 @@ bool is_jmp_table(const ea_t ea)
     return strstr(cmt.c_str(), "table for switch");
 }
 
-bool is_retn_insn(const insn_t& ins)
+bool is_ret_insn_ex(const insn_t& ins)
 {
     const char* mnem = ins.get_canon_mnem();
     return strstr(mnem, "ret") == mnem;
 }
 
-bool is_retn_insn(const ea_t ea)
+bool is_ret_insn_ex(const ea_t ea)
 {
     insn_t ins;
-    return decode_insn(&ins, ea) && is_retn_insn(ins);
+    return decode_insn(&ins, ea) && is_ret_insn_ex(ins);
 }
 
 bool is_int3_insn(const insn_t& ins)
@@ -76,6 +76,31 @@ bool is_int3_insn(const insn_t& ins)
 bool is_int3_insn(const ea_t ea)
 {
     return get_byte(ea) == 0xCC;
+}
+
+bool is_func_end_insn(const insn_t& ins)
+{
+    return is_ret_insn_ex(ins) || is_jmp_insn(ins) || is_int3_insn(ins);
+}
+
+bool is_func_end_insn(const ea_t ea)
+{
+    insn_t ins;
+    return decode_insn(&ins, ea) && is_func_end_insn(ins);
+}
+
+bool create_insn_ex(const ea_t ea)
+{
+    // abort if invalid instruction
+    insn_t ins;
+    if (!decode_insn(&ins, ea))
+        return false;
+
+    // undefine any pre-existing items that overlap the instruction
+    del_items(ea, DELIT_SIMPLE, ins.size);
+
+    // attempt to create the instruction and return the creation status
+    return create_insn(ea) == ins.size && is_code(get_flags(ea));
 }
 
 #pragma endregion
@@ -89,16 +114,12 @@ void get_func_end_insn(const func_t& func, insn_t& out)
     decode_insn(&out, end_place.ea);
 }
 
-bool is_func_truncated(const func_t& func)
-{
+bool func_does_end(const func_t& func)
+{    
     // get last instruction
     insn_t end_insn;
     get_func_end_insn(func, end_insn);
-    
-    // return true if it doesn't end on a ret, jmp, or int 3
-    // NOTE: do not use func_t::does_return() because it returns true if *any* part of the function returns!
-    // NOTE: do not use is_ret_insn because it's buggy!
-    return !is_retn_insn(end_insn) && !is_jmp_insn(end_insn) && !is_int3_insn(end_insn);
+    return is_func_end_insn(end_insn);
 }
 
 #pragma endregion
