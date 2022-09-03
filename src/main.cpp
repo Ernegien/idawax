@@ -86,7 +86,49 @@ void clear_bad_data_xrefs(const idaplace_t& place)
 
 void process_data(const idaplace_t& place)
 {
-    // TODO: undefined data gets turned into aligned dwords to be checked for xrefs
+    // only process undefined/unreferenced data
+    flags_t flags = get_flags(place.ea);
+    if (!(is_unknown(flags) && !has_xref(flags)))
+        return;
+
+    // get data info
+    asize_t total_size = get_item_size(place.ea);
+    asize_t item_size = get_data_elsize(place.ea, flags);
+    bool is_array = total_size > item_size;
+    asize_t array_count = total_size / item_size;
+
+    // TODO: not sure if mixed arrays are a thing...
+    assert(total_size % item_size == 0);
+
+    // gets potential pointer info
+    ea_t offset = get_32bit(place.ea);
+    flags_t offset_flags = get_flags(offset);
+
+    // check if it points to the beginning of a function
+    if (is_func(offset_flags) && get_func(offset)->start_ea == offset)
+    {
+        msg("Function reference detected at 0x%X\r\n", place.ea);
+        if (!create_dword(place.ea, 4))
+        {
+            // TODO: decompose arrays if necessary
+        }
+    }
+
+    // check if it points to referenced or defined strings
+    else if (is_data(offset_flags) && (has_xref(offset_flags) || is_strlit(offset_flags) || is_off(offset_flags, 0)))
+    {
+        msg("Data reference detected at 0x%X\r\n", place.ea);
+        if (!create_dword(place.ea, 4))
+        {
+            // TODO: decompose arrays if necessary
+        }
+    }
+
+    // unknown data, define based on alignment; eventually be smarter than this by peeking at xref instruction data types or surrounding data etc.
+    else if (is_unknown(flags) && !is_array)
+    {
+        // TODO: create dword if 4-byte aligned (check for float types first), else create word if 2-byte aligned, else byte
+    }
 }
 
 void process_code(const idaplace_t& place)
