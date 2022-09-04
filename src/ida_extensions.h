@@ -8,6 +8,7 @@
 #include <loader.hpp>
 #include <kernwin.hpp>
 #include <typeinf.hpp>
+#include <windows.h>
 
 #pragma region Instructions
 
@@ -214,5 +215,16 @@ void detect_and_make_op_tag(const insn_t& instruction);
 /// <param name="no_comments">Removes comments.</param>
 /// <param name="no_empty">Removes empty lines.</param>
 void msg_disasm_range(ea_t start, ea_t end, bool indent = true, bool no_addresses = false, bool only_instructions = false, bool no_comments = false, bool no_empty = false);
+
+#pragma endregion
+
+#pragma region Misc
+
+/// <summary>
+/// Retrieves the IDA plugin directory path with the trailing separator.
+/// </summary>
+/// <param name="out">The directory path.</param>
+/// <returns>Returns the IDA plugin directory path.</returns>
+bool get_plugin_dir(qstring& out);
 
 #pragma endregion

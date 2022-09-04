@@ -95,7 +95,8 @@
       <AdditionalDependencies>$(IDA_DIR)\idasdk\lib\x64_win_vc_32\ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"</Command>
+      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"
+copy "$(SolutionDir)..\dep\idawax_wordlist.txt" "$(IDA_DIR)\plugins"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -116,7 +117,8 @@
       <AdditionalDependencies>$(IDA_DIR)\idasdk\lib\x64_win_vc_32\ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"</Command>
+      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"
+copy "$(SolutionDir)..\dep\idawax_wordlist.txt" "$(IDA_DIR)\plugins"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -132,7 +134,8 @@
       <AdditionalDependencies>$(IDA_DIR)\idasdk\lib\x64_win_vc_32\ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"</Command>
+      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"
+copy "$(SolutionDir)..\dep\idawax_wordlist.txt" "$(IDA_DIR)\plugins"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -147,7 +150,8 @@
       <AdditionalDependencies>$(IDA_DIR)\idasdk\lib\x64_win_vc_32\ida.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"</Command>
+      <Command>copy "$(OutDir)$(TargetFileName)" "$(IDA_DIR)\plugins"
+copy "$(SolutionDir)..\dep\idawax_wordlist.txt" "$(IDA_DIR)\plugins"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

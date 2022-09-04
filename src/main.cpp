@@ -12,7 +12,43 @@
 #include <kernwin.hpp>
 #include <typeinf.hpp>
 #include <chrono>
+#include <unordered_set>
 #include "ida_extensions.h"
+
+std::unordered_set<std::string> wordlist(26000);
+
+// TODO: substitute with something else that's licensed? they're just words...
+// https://github.com/dolph/dictionary/blob/master/popular.txt
+void load_wordlist(std::unordered_set<std::string>& out)
+{
+    // build the wordlist path
+    qstring plugin_dir;
+    if (!get_plugin_dir(plugin_dir))
+    {
+        msg("Failed to load wordlist, cannot obtain plugin directory!\r\n");
+        return;
+    }
+    plugin_dir.append("idawax_wordlist.txt");
+
+    // open the wordlist file
+    FILE* file = qfopen(plugin_dir.c_str(), "r");
+    if (!file)
+    {
+        msg("Failed to load wordlist from '%s'\r\n", plugin_dir);
+        return;
+    }
+
+    // populate the wordlist
+    out.clear();
+    for (qstring line; qgetline(&line, file) > 0;)
+    {
+        // skip small words
+        if (line.size() < 4)
+            continue;
+
+        out.insert(line.c_str());
+    }
+}
 
 void detect_function(const ea_t ea)
 { 
@@ -217,33 +253,35 @@ void process_segment(const segment_t& segment)
 
 bool idaapi run(size_t)
 {
-  if ( !auto_is_ok()
+    if ( !auto_is_ok()
     && ask_yn(ASKBTN_NO,
-              "HIDECANCEL\n"
-              "The autoanalysis has not finished yet.\n"
-              "The result might be incomplete.\n"
-              "Do you want to continue?") < ASKBTN_YES )
-  {
+        "HIDECANCEL\n"
+        "The autoanalysis has not finished yet.\n"
+        "The result might be incomplete.\n"
+        "Do you want to continue?") < ASKBTN_YES )
+    {
     return true;
-  }
+    }
 
-  auto start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
 
-  qvector<segment_t> segments;
-  get_segments(segments);
-  for (auto const& segment : segments)
-  {
-      process_segment(segment);
-  }
+    load_wordlist(wordlist);
 
-  // kill any pending auto-analysis triggered by the updates we've made
-  auto_cancel(0, UINT32_MAX);
+    qvector<segment_t> segments;
+    get_segments(segments);
+    for (auto const& segment : segments)
+    {
+        process_segment(segment);
+    }
 
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
-  msg("Cleanup finished in %d milliseconds\r\n", duration);
+    // kill any pending auto-analysis triggered by the updates we've made
+    auto_cancel(0, UINT32_MAX);
 
-  return true;
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    msg("Cleanup finished in %d milliseconds\r\n", duration);
+
+    return true;
 }
 
 //--------------------------------------------------------------------------

@@ -1,12 +1,4 @@
 #include "ida_extensions.h"
-#include <ida.hpp>
-#include <idp.hpp>
-#include <auto.hpp>
-#include <entry.hpp>
-#include <bytes.hpp>
-#include <loader.hpp>
-#include <kernwin.hpp>
-#include <typeinf.hpp>
 
 #pragma region Instructions
 
@@ -413,3 +405,28 @@ void msg_disasm_range(ea_t start, ea_t end, bool indent, bool no_addresses, bool
 
 #pragma endregion
 
+#pragma region Misc
+
+bool get_plugin_dir(qstring& out)
+{    
+    char path[MAX_PATH];
+    HMODULE hm = NULL;
+
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+        GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, "", &hm) == 0)
+    {
+        return false;
+    }
+
+    if (GetModuleFileName(hm, path, sizeof(path)) == 0)
+    {
+        return false;
+    }
+
+    out.append(path);
+    out.resize(out.rfind('\\', 0) + 1);
+
+    return true;
+}
+
+#pragma endregion
